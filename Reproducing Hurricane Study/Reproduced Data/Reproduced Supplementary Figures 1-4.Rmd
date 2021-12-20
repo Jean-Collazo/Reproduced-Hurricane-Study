@@ -1,0 +1,99 @@
+---
+title: "Reproduced Sup 2"
+author: "JEAN"
+date: "12/19/2021"
+output: html_document
+---
+
+```{R, Sup2}
+source("../ref/base.R")
+
+lib_eval("tidyverse")
+lib_eval("reshape2")
+lib_eval("ggridges")
+
+hh_main <- readRDS("../data/rdata/hh_main.RDS")
+```
+
+```{R, S2}
+deaths_official <- readRDS("../data/rdata/deaths_official.RDS")
+
+deaths_official %>%
+  dplyr::select(-Pop) %>%
+  melt(id.vars = "Year") %>%
+  #rbind(x) %>%
+  subset(!(Year == "surv"))-> data
+
+fig.s2 <- ggplot(data=data,aes(x=variable, y=as.numeric(value), group=as.factor(Year), color=as.factor(Year),linetype=as.factor(Year))) +
+  geom_point(size=2.5) +
+  geom_line() +
+  scale_color_manual(name="Years",
+                     breaks=c("2010","2017","adj1"),
+                     labels=c("2010-2016","2017 official\n Estimates",
+                              "Adjusted for 1-person\nhouseholds\n"),
+                     values=c("grey90","blue","grey88","grey87",
+                              "grey86","grey85","grey84","#2c7bb6","#de2d26",
+                              "#fb6a4a","#a50f15")) +
+  geom_line() +
+  scale_linetype_manual(values=c(replicate(7,"solid"),"blank"),
+                        guide=F) +
+  theme_classic() +
+  xlab("Month") + ylab("Number of deaths") + ylim(c(1500, 3500))
+
+fig.s2
+
+```
+
+```{R, S3}
+
+individuals <- readRDS("../data/rdata/individuals.RDS")
+
+hh_main %>% 
+{table(.$hh_size)} %>%
+  prop.table() %>% 
+  as.data.frame() %>%
+  ggplot(aes(y=Freq, x=Var1)) + 
+  geom_bar(stat="identity") + 
+  theme_classic() + 
+  theme(#axis.text.x = element_text(angle = 90, hjust = 1, vjust = .5), 
+        legend.position = c(1, .99), 
+        legend.justification = c(1, 1)) +
+  xlab("Household Size") + 
+  ylab("Proportion of Sample") -> fig.s3a #+
+  #ggtitle("Figure S2: Histogram of Proportion of Household Sizes in Sample")
+
+aggregate(age~hh_id, data=individuals, FUN=median) %>%
+{merge(hh_main, ., by="hh_id", all.x=T)} %>%
+  ggplot(aes(x=as.factor(hh_size), y = age)) +
+  geom_boxplot() +
+  theme_classic() +
+  theme(axis.text.x = element_text(size=8)) +
+  labs(x = "Household Size", y = "Median Household Age (Years)", 
+       title = "\nMedian household age by household size") -> fig.s3b
+
+fig.s3a
+fig.s3b
+```
+
+```{R, s4}
+
+#proportion missing per strata after January 26th
+fig.s4 <- hh_main %>%
+  subset(flag == 1) %>%
+  mutate(house_status = ifelse(house_status == "---", "1", house_status)) %>%
+  {table(.$house_status, .$strata)} %>% prop.table() %>% as.data.frame()%>%
+  ggplot(aes(x=Var2, y=Freq)) +
+  geom_bar(stat="identity") +
+  #ggtitle("Figure S3: Association of Remoteness on Proportion of \nAbandoned Houses / Incomplete Surveys") +
+  xlab("Remoteness") + 
+  ylab("Proportion of households without consent") + 
+  scale_x_discrete("Remoteness", expand = c(0, 0), breaks = 1:8,
+                   labels = c("1: Least \nRemote", "2", "3", "4",
+                              "5", "6", "7", "8: Most \nRemote"))+
+  theme_classic()
+
+fig.s4
+
+```
+
+
